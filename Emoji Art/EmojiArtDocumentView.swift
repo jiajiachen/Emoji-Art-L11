@@ -18,6 +18,11 @@ struct EmojiArtDocumentView: View {
     var body: some View {
         VStack(spacing: 0) {
             documentBody
+            Button {
+                deleteEmojis()
+            } label: {
+                Text("Delete Emojis")
+            }.disabled(document.emojis.count == 0)
             PaletteChooser()
                 .font(.system(size: paletteEmojiSize))
                 .padding(.horizontal)
@@ -48,21 +53,37 @@ struct EmojiArtDocumentView: View {
         AsyncImage(url: document.background)
             .position(Emoji.Position.zero.in(geometry))
         ForEach(document.emojis) { emoji in
-            Text(emoji.string)
-                .font(emoji.font)
-                .border(Color.red.opacity(isSelected(emoji) ? 1 : 0), width: 3)
-                .position(emoji.position.in(geometry))
-                .onTapGesture {
-                    if isSelected(emoji) {
-                        unSelectEmoji(emoji)
-                    } else {
-                        selectEmoji(emoji)
+                Text(emoji.string)
+                    .font(emoji.font)
+                    .border(Color.red.opacity(isSelected(emoji) ? 1 : 0), width: 3)
+                    .scaleEffect(isSelected(emoji) ? emoji.scaleEffect * zoomEmoji * gestureZoomEmoji : emoji.scaleEffect)
+//                    .offset(panEmoji + gesturePanEmoji)
+                    .offset(isSelected(emoji) ? emoji.offset + panEmoji + gesturePanEmoji : emoji.offset)
+                    .gesture(isSelected(emoji) ? panGestureEmoji : nil)
+                    .position(emoji.position.in(geometry))
+                    .onTapGesture {
+                        if isSelected(emoji) {
+                            updateEmojiScale(emoji, scaleEffect: emoji.scaleEffect * zoomEmoji)
+                            updateEmojiOffset(emoji, offset: emoji.offset + panEmoji)
+                            unSelectEmoji(emoji)
+                        } else {
+                            updateEmojiScale(emoji, scaleEffect: emoji.scaleEffect / zoomEmoji)
+                            updateEmojiOffset(emoji, offset: emoji.offset - panEmoji)
+                            selectEmoji(emoji)
+                        }
                     }
-                }
-                
+           
         }
     }
-
+    
+    private func updateEmojiScale(_ emoji: Emoji, scaleEffect: Double) {
+        document.updateEmojiScale(emoji, scaleEffect: scaleEffect)
+    }
+    
+    private func updateEmojiOffset(_ emoji: Emoji, offset: CGOffset) {
+        document.updateEmojiOffset(emoji, offset: offset)
+    }
+    
     @State private var zoom: CGFloat = 1
     @State private var pan: CGOffset = .zero
     
@@ -70,24 +91,66 @@ struct EmojiArtDocumentView: View {
     @GestureState private var gesturePan: CGOffset = .zero
     
     
+    @State private var zoomEmoji: CGFloat = 1
+    @State private var panEmoji: CGOffset = .zero
+    @State private var zoomEmojiEndingPinchScale: CGFloat = 1
+    
+    @GestureState private var gestureZoomEmoji: CGFloat = 1
+    @GestureState private var gesturePanEmoji: CGOffset = .zero
+    
+    
     
     private var zoomGesture: some Gesture {
         MagnificationGesture()
             .updating($gestureZoom) { inMotionPinchScale, gestureZoom, _ in
-                gestureZoom = inMotionPinchScale
+                if selectEmojiList.count == 0 {
+                    gestureZoom = inMotionPinchScale
+                }
+                
+            }
+            .updating($gestureZoomEmoji) { inMotionPinchScale, gestureZoomEmoji, _ in
+                if selectEmojiList.count > 0 {
+                    gestureZoomEmoji = inMotionPinchScale
+                }
             }
             .onEnded { endingPinchScale in
-                zoom *= endingPinchScale
+                if selectEmojiList.count == 0 {
+                    zoom *= endingPinchScale
+                } else if selectEmojiList.count > 0 {
+                    zoomEmojiEndingPinchScale *= endingPinchScale
+                    zoomEmoji *= endingPinchScale
+                }
+                
             }
+         
     }
     
     private var panGesture: some Gesture {
         DragGesture()
             .updating($gesturePan) { inMotionDragGestureValue, gesturePan, _ in
-                gesturePan = inMotionDragGestureValue.translation
+                if selectEmojiList.count == 0 {
+                    gesturePan = inMotionDragGestureValue.translation
+                }
             }
             .onEnded { endingDragGestureValue in
-                pan += endingDragGestureValue.translation
+                if selectEmojiList.count == 0 {
+                    pan += endingDragGestureValue.translation
+                }
+                
+            }
+    }
+    
+    private var panGestureEmoji: some Gesture {
+        DragGesture()
+            .updating($gesturePanEmoji) { inMotionDragGestureValue, gesturePanEmoji, _ in
+                if selectEmojiList.count > 0 {
+                    gesturePanEmoji = inMotionDragGestureValue.translation
+                }
+            }
+            .onEnded { endingDragGestureValue in
+                if selectEmojiList.count > 0 {
+                    panEmoji += endingDragGestureValue.translation
+                }
             }
     }
     
@@ -105,6 +168,11 @@ struct EmojiArtDocumentView: View {
     }
     
     private func unSelectAllEmojis() {
+        selectEmojiList.removeAll()
+    }
+    
+    private func deleteEmojis() {
+        document.removeEmojis()
         selectEmojiList.removeAll()
     }
     

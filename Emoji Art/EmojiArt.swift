@@ -24,6 +24,27 @@ struct EmojiArt {
         ))
     }
     
+    mutating func removeEmojis() {
+        for emoji in emojis {
+            if let index = index(of: emoji.id) {
+                emojis.remove(at: index)
+            }
+        }
+    }
+    
+    mutating func updateEmojiScale(_ emoji: Emoji, scaleEffect: Double) {
+        if let index = emojis.firstIndex(where: { $0.id == emoji.id }) {
+            emojis[index].scaleEffect = scaleEffect
+        }
+    }
+    
+    mutating func updateEmojiOffset(_ emoji: Emoji, offset: CGOffset) {
+        if let index = emojis.firstIndex(where: { $0.id == emoji.id }) {
+            emojis[index].offset = offset
+        }
+    }
+    
+    
     subscript(_ emojiId: Emoji.ID) -> Emoji? {
         if let index = index(of: emojiId) {
             return emojis[index]
@@ -56,6 +77,8 @@ struct EmojiArt {
         var position: Position
         var size: Int
         var id: Int
+        var scaleEffect: CGFloat = 1
+        var offset: CGOffset = .zero
         
         struct Position {
             var x: Int
