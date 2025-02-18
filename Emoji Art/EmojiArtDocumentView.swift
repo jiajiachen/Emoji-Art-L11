@@ -57,7 +57,6 @@ struct EmojiArtDocumentView: View {
                     .font(emoji.font)
                     .border(Color.red.opacity(isSelected(emoji) ? 1 : 0), width: 3)
                     .scaleEffect(isSelected(emoji) ? emoji.scaleEffect * zoomEmoji * gestureZoomEmoji : emoji.scaleEffect)
-//                    .offset(panEmoji + gesturePanEmoji)
                     .offset(isSelected(emoji) ? emoji.offset + panEmoji + gesturePanEmoji : emoji.offset)
                     .gesture(isSelected(emoji) ? panGestureEmoji : nil)
                     .position(emoji.position.in(geometry))
@@ -168,6 +167,15 @@ struct EmojiArtDocumentView: View {
     }
     
     private func unSelectAllEmojis() {
+        for emojiId in selectEmojiList {
+            if let index = document.emojis.firstIndex(where: { $0.id == emojiId }) {
+                let emoji = document.emojis[index]
+                updateEmojiScale(emoji, scaleEffect: emoji.scaleEffect * zoomEmoji)
+                updateEmojiOffset(emoji, offset: emoji.offset + panEmoji)
+                unSelectEmoji(emoji)
+            }
+            
+        }
         selectEmojiList.removeAll()
     }
     
